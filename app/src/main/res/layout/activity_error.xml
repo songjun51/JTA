@@ -1,0 +1,34 @@
+
+
+<LinearLayout
+
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:weightSum="10"
+    android:orientation="horizontal"
+
+
+    >
+    <Space
+        android:layout_width="1dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        />
+
+    <RelativeLayout
+        android:layout_width="1dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="7"
+        >
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+
+        android:src="@drawable/internet"
+        android:layout_centerInParent="true"
+        />
+    </RelativeLayout>
+
+
+</LinearLayout>
