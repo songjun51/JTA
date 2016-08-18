@@ -1,15 +1,21 @@
 package com.songjun51.jta;
 
+import android.app.DownloadManager;
 import android.app.ProgressDialog;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.design.widget.NavigationView;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -22,16 +28,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
+import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
 import com.github.clans.fab.FloatingActionButton;
 import com.github.clans.fab.FloatingActionMenu;
+
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener
-{
+        implements NavigationView.OnNavigationItemSelectedListener {
     private BackPressCloseHandler backPressCloseHandler;
 
     WebView webView;
@@ -42,8 +52,12 @@ public class MainActivity extends AppCompatActivity
     private FloatingActionButton fab1;
     private FloatingActionButton fab2;
     private FloatingActionButton fab3, fab4, fab5, fab6, fab7, fab8;
-    int status =1;
+    int status = 1;
     DrawerLayout drawer;
+
+    //    public HttpClient httpclient =  new DefaultHttpClient();  //멤버변수로 선언
+    public CookieManager cookieManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +66,7 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
         handleIntent(getIntent());
         webView = (WebView) findViewById(R.id.webview1);
+        CookieSyncManager.createInstance(this);
         dialog = new ProgressDialog(this);
         backPressCloseHandler = new BackPressCloseHandler(this);
         floatingActionMenu = (FloatingActionMenu) findViewById(R.id.menu_green);
@@ -99,13 +114,8 @@ public class MainActivity extends AppCompatActivity
                         .show();
                 return true;
 
-            }
-
-            ;
-
+            } ;
         });
-
-
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -163,16 +173,71 @@ public class MainActivity extends AppCompatActivity
             @Override
             public boolean onLongClick(View v) {
                 webView.loadUrl("http://jteacher.net/m/");
+                fab1.setLabelText("로그인");
+                fab2.setLabelText("게시판");
+                status = 1;
+                fab3.setVisibility(View.GONE);
+                fab4.setVisibility(View.GONE);
+                fab5.setVisibility(View.GONE);
+                fab6.setVisibility(View.GONE);
+                fab7.setVisibility(View.GONE);
+                fab8.setVisibility(View.GONE);
+                fab1.setVisibility(View.VISIBLE);
+                fab2.setVisibility(View.VISIBLE);
+
                 return false;
             }
         });
-    }
+
+        webView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String ty, long contentLength) {
+                try {
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    request.setMimeType(ty);
+                    request.addRequestHeader("User-Agent", userAgent);
+                    request.setDescription("Downloading file");
+                    String fileName = contentDisposition.replace("inline; filename=", "");
+                    fileName = fileName.replaceAll("\"", "");
+                    request.setTitle(fileName);
+                    request.allowScanningByMediaScanner();
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    dm.enqueue(request);
+                    Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+
+                    if (ContextCompat.checkSelfPermission(MainActivity.this,
+                            android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        // Should we show an explanation?
+                        if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
+                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                    110);
+                        } else {
+                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
+                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                    110);
+                        }
+                    }
+                }
+            }
+        });
+
+    }// 끝
 
     @Override
     public void onBackPressed() {
 
         if (drawer.isDrawerOpen(GravityCompat.START)) {
+
             drawer.closeDrawer(GravityCompat.START);
+        }
+        if (floatingActionMenu.isOpened()) {
+            floatingActionMenu.close(true);
         } else {
             backPressCloseHandler.onBackPressed();
         }
@@ -404,14 +469,12 @@ public class MainActivity extends AppCompatActivity
         MenuItem searchItem = menu.findItem(R.id.action_search);
         searchView = (SearchView) searchItem.getActionView();
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-
             @Override
             public boolean onQueryTextSubmit(String s) {
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, InputMethodManager.HIDE_NOT_ALWAYS);
+                imm.hideSoftInputFromWindow(searchView.getWindowToken(), 0);
                 webView.loadUrl("http://jteacher.net/m/bbs/search.php?stx=" + s + "&sfl=wr_subject%7C%7Cwr_content&sop=and&x=0&y=0&where=m&sm=mtp_hty");
-
-                return true;
+                return false;
             }
 
             @Override
@@ -429,6 +492,7 @@ public class MainActivity extends AppCompatActivity
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if ((keyCode == KeyEvent.KEYCODE_BACK) && webView.canGoBack()) {
             webView.goBack();
+
             return true;
         }
 
@@ -698,5 +762,17 @@ public class MainActivity extends AppCompatActivity
         }
 
     };
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        CookieSyncManager.getInstance().startSync();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        CookieSyncManager.getInstance().stopSync();
+    }
 
 }
