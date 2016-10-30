@@ -23,6 +23,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -40,6 +41,24 @@ import android.widget.Toast;
 import com.github.clans.fab.FloatingActionButton;
 import com.github.clans.fab.FloatingActionMenu;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.HttpResponseException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     private BackPressCloseHandler backPressCloseHandler;
@@ -55,14 +74,19 @@ public class MainActivity extends AppCompatActivity
     int status = 1;
     DrawerLayout drawer;
 
-    //    public HttpClient httpclient =  new DefaultHttpClient();  //멤버변수로 선언
+    public HttpClient httpclient =  new DefaultHttpClient();  //멤버변수로 선언
     public CookieManager cookieManager;
+    public String domain = "http://m.jteacher.net/";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         toolbar = (Toolbar) findViewById(R.id.toolbar);
+         CookieSyncManager.createInstance(this);
+        cookieManager = CookieManager.getInstance();
+        CookieSyncManager.getInstance().startSync();
         setSupportActionBar(toolbar);
         handleIntent(getIntent());
         webView = (WebView) findViewById(R.id.webview1);
@@ -208,8 +232,7 @@ public class MainActivity extends AppCompatActivity
                     Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
                 } catch (Exception e) {
 
-                    if (ContextCompat.checkSelfPermission(MainActivity.this,
-                            android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    if (ContextCompat.checkSelfPermission(MainActivity.this,android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                             != PackageManager.PERMISSION_GRANTED) {
                         // Should we show an explanation?
                         if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
@@ -227,6 +250,7 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        setSyncCookie();
     }// 끝
 
     @Override
@@ -774,5 +798,59 @@ public class MainActivity extends AppCompatActivity
         super.onPause();
         CookieSyncManager.getInstance().stopSync();
     }
+
+    public void setSyncCookie() {
+        Log.e("surosuro", "token transfer start ---------------------------");
+        try {
+            List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(2);
+            nameValuePairs.add(new BasicNameValuePair("token", "TEST"));// 넘길 파라메터 값셋팅token=TEST
+
+            HttpParams params = new BasicHttpParams();
+
+            HttpPost post = new HttpPost(domain+"/androidToken.jsp");
+            post.setParams(params);
+            HttpResponse response = null;
+            BasicResponseHandler myHandler = new BasicResponseHandler();
+            String endResult = null;
+
+            try {
+                post.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                response = httpclient.execute(post);
+            } catch (ClientProtocolException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                endResult = myHandler.handleResponse(response);
+            } catch (HttpResponseException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            List<org.apache.http.cookie.Cookie> cookies = ((DefaultHttpClient)httpclient).getCookieStore().getCookies();
+
+            if (!cookies.isEmpty()) {
+                for (int i = 0; i < cookies.size(); i++) {
+                    // cookie = cookies.get(i);
+                    String cookieString = cookies.get(i).getName() + "="
+                            + cookies.get(i).getValue();
+                    Log.e("surosuro", cookieString);
+                    cookieManager.setCookie(domain, cookieString);
+                }
+            }
+            Thread.sleep(500);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
 
 }
