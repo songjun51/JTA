@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.design.widget.NavigationView;
@@ -32,6 +33,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -54,8 +56,16 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,7 +84,7 @@ public class MainActivity extends AppCompatActivity
     int status = 1;
     DrawerLayout drawer;
 
-    public HttpClient httpclient =  new DefaultHttpClient();  //멤버변수로 선언
+    public HttpClient httpclient = new DefaultHttpClient();  //멤버변수로 선언
     public CookieManager cookieManager;
     public String domain = "http://m.jteacher.net/";
 
@@ -84,7 +94,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
-         CookieSyncManager.createInstance(this);
+        CookieSyncManager.createInstance(this);
         cookieManager = CookieManager.getInstance();
         CookieSyncManager.getInstance().startSync();
         setSupportActionBar(toolbar);
@@ -138,7 +148,9 @@ public class MainActivity extends AppCompatActivity
                         .show();
                 return true;
 
-            } ;
+            }
+
+            ;
         });
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -213,45 +225,108 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+
+//        @Override
+//        public void onDownloadStart(String url, String userAgent, String contentDisposition, String ty, long contentLength) {
+//            try {
+//                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+//                request.setMimeType(ty);
+//                request.addRequestHeader("User-Agent", userAgent);
+//                request.setDescription("Downloading file");
+//                String fileName = contentDisposition.replace("inline; filename=", "");
+//                fileName = fileName.replaceAll("\"", "");
+//                request.setTitle(fileName);
+//                request.allowScanningByMediaScanner();
+//                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+//                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+//                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+//                dm.enqueue(request);
+//                Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
+//            } catch (Exception e) {
+
+
+//        webView.setDownloadListener(new DownloadListener() {
+//            @Override
+//            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+//                try {
+//                    DownloadManager.Request request = new DownloadManager.Request(
+//                            Uri.parse(url));
+//                    request.setMimeType(mimetype);
+//                    String cookies = CookieManager.getInstance().getCookie(url);
+//                    request.addRequestHeader("cookie", cookies);
+//                    request.addRequestHeader("User-Agent", userAgent);
+//                    request.setDescription("Downloading file...");
+//                    request.setTitle(URLUtil.guessFileName(url, contentDisposition,
+//                            mimetype));
+//                    request.allowScanningByMediaScanner();
+//                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+//                    request.setDestinationInExternalPublicDir(
+//                            Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(
+//                                    url, contentDisposition, mimetype));
+//                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+//                    dm.enqueue(request);
+//                    Toast.makeText(getApplicationContext(), "Downloading File",
+//                            Toast.LENGTH_LONG).show();
+//
+//                } catch (Exception e) {
+//
+//                    if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+//                            != PackageManager.PERMISSION_GRANTED) {
+//                        // Should we show an explanation?
+//                        if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+//                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+//                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
+//                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+//                                    110);
+//                        } else {
+//                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
+//                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+//                                    110);
+//                        }
+//                    }
+//                }
+//            }
+//        });
+
+        setSyncCookie();
+
+
         webView.setDownloadListener(new DownloadListener() {
             @Override
-            public void onDownloadStart(String url, String userAgent, String contentDisposition, String ty, long contentLength) {
-                try {
-                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                    request.setMimeType(ty);
-                    request.addRequestHeader("User-Agent", userAgent);
-                    request.setDescription("Downloading file");
-                    String fileName = contentDisposition.replace("inline; filename=", "");
-                    fileName = fileName.replaceAll("\"", "");
-                    request.setTitle(fileName);
-                    request.allowScanningByMediaScanner();
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    dm.enqueue(request);
-                    Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
 
-                    if (ContextCompat.checkSelfPermission(MainActivity.this,android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            != PackageManager.PERMISSION_GRANTED) {
-                        // Should we show an explanation?
-                        if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
-                                android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
-                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                    110);
-                        } else {
-                            Toast.makeText(getBaseContext(), "첨부파일 다운로드를 위해\n동의가 필요합니다.", Toast.LENGTH_LONG).show();
-                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                    110);
-                        }
-                    }
-                }
+                request.setMimeType(mimeType);
+                //------------------------COOKIE!!------------------------
+                String cookies = CookieManager.getInstance().getCookie(url);
+                request.addRequestHeader("cookie", cookies);
+                //------------------------COOKIE!!------------------------
+                request.addRequestHeader("User-Agent", userAgent);
+                request.setDescription("Downloading file...");
+                request.setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType));
+                request.allowScanningByMediaScanner();
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, URLUtil.guessFileName(url, contentDisposition, mimeType));
+                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                dm.enqueue(request);
+                Toast.makeText(getApplicationContext(), "Downloading File", Toast.LENGTH_LONG).show();
             }
         });
 
-        setSyncCookie();
+
     }// 끝
+
+
+//    public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+//        String fileName;
+//        try {
+//            fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+//            downloadFileAsync(url, fileName);
+//        } catch (Exception e) {
+//
+//        }
+//    }
+
 
     @Override
     public void onBackPressed() {
@@ -807,7 +882,7 @@ public class MainActivity extends AppCompatActivity
 
             HttpParams params = new BasicHttpParams();
 
-            HttpPost post = new HttpPost(domain+"/androidToken.jsp");
+            HttpPost post = new HttpPost(domain + "/androidToken.jsp");
             post.setParams(params);
             HttpResponse response = null;
             BasicResponseHandler myHandler = new BasicResponseHandler();
@@ -835,7 +910,7 @@ public class MainActivity extends AppCompatActivity
                 e.printStackTrace();
             }
 
-            List<org.apache.http.cookie.Cookie> cookies = ((DefaultHttpClient)httpclient).getCookieStore().getCookies();
+            List<org.apache.http.cookie.Cookie> cookies = ((DefaultHttpClient) httpclient).getCookieStore().getCookies();
 
             if (!cookies.isEmpty()) {
                 for (int i = 0; i < cookies.size(); i++) {
@@ -852,5 +927,81 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
+    private void downloadFileAsync(String url, String filename) {
+
+        new AsyncTask<String, Void, String>() {
+            String SDCard;
+
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+            }
+
+            @Override
+            protected String doInBackground(String... params) {
+                try {
+                    URL url = new URL(params[0]);
+                    HttpURLConnection urlConnection = null;
+                    urlConnection = (HttpURLConnection) url.openConnection();
+                    urlConnection.setRequestMethod("GET");
+                    urlConnection.setDoOutput(true);
+                    urlConnection.connect();
+                    int lengthOfFile = urlConnection.getContentLength();
+                    //SDCard = Environment.getExternalStorageDirectory() + File.separator + "downloads";
+                    SDCard = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "";
+                    int k = 0;
+                    boolean file_exists;
+                    String finalValue = params[1];
+                    do {
+                        if (k > 0) {
+                            if (params[1].length() > 0) {
+                                String s = params[1].substring(0, params[1].lastIndexOf("."));
+                                String extension = params[1].replace(s, "");
+
+                                finalValue = s + "(" + k + ")" + extension;
+                            } else {
+                                String fileName = params[0].substring(params[0].lastIndexOf('/') + 1);
+                                String s = fileName.substring(0, fileName.lastIndexOf("."));
+                                String extension = fileName.replace(s, "");
+                                finalValue = s + "(" + k + ")" + extension;
+                            }
+                        }
+                        File fileIn = new File(SDCard, finalValue);
+                        file_exists = fileIn.exists();
+                        k++;
+                    } while (file_exists);
+
+                    File file = new File(SDCard, finalValue);
+                    FileOutputStream fileOutput = null;
+                    fileOutput = new FileOutputStream(file, true);
+                    InputStream inputStream = null;
+                    inputStream = urlConnection.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int count;
+                    long total = 0;
+                    while ((count = inputStream.read(buffer)) != -1) {
+                        total += count;
+                        //publishProgress(""+(int)((total*100)/lengthOfFile));
+                        fileOutput.write(buffer, 0, count);
+                    }
+                    fileOutput.flush();
+                    fileOutput.close();
+                    inputStream.close();
+                } catch (MalformedURLException e) {
+                } catch (ProtocolException e) {
+                } catch (FileNotFoundException e) {
+                } catch (IOException e) {
+                } catch (Exception e) {
+                }
+                return params[1];
+            }
+
+            @Override
+            protected void onPostExecute(final String result) {
+
+            }
+
+        }.execute(url, filename);
+    }
 
 }
